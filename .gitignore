@@ -1,0 +1,13 @@
+.gradle/
+build/
+app/build/
+local.properties
+*.keystore
+*.jks
+.idea/
+*.iml
+captures/
+# Jangan pernah simpan e-statement di repo
+*.xlsx
+*.xls
+*.pdf

@@ -1,0 +1,6 @@
+# Versi pertama
+- Import e-statement Livin' by Mandiri (.xlsx berpassword).
+- Dua buku: Usaha (penjualan QRIS toko) dan Pribadi.
+- Pindah dana ke rekening sendiri & bayar QR ke toko sendiri tidak dihitung.
+- Nama baru ditanyakan sekali, lalu diingat.
+- Catat transaksi tunai, laporan bulanan per kategori, cadangan data.

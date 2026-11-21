@@ -1,0 +1,81 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Kunci tetap: isi Secret CK_SIGNING_PASS supaya APK baru bisa dipasang di atas versi lama
+      # (data di HP tetap aman). Tanpa Secret, APK memakai kunci debug sementara.
+      - name: Kunci tanda tangan
+        env:
+          CK_SIGNING_PASS: ${{ secrets.CK_SIGNING_PASS }}
+        run: |
+          if [ -n "$CK_SIGNING_PASS" ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+              -in signing/release.keystore.enc -out "$RUNNER_TEMP/ck.keystore" -pass env:CK_SIGNING_PASS
+            echo "CK_KEYSTORE_FILE=$RUNNER_TEMP/ck.keystore" >> "$GITHUB_ENV"
+            echo "CK_SIGNING_PASS=$CK_SIGNING_PASS" >> "$GITHUB_ENV"
+            echo "Kunci tetap dipakai."
+          else
+            echo "::warning::Secret CK_SIGNING_PASS belum diisi — APK memakai kunci debug (update perlu uninstall)."
+          fi
+
+      - name: Build APK
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/release/app-release.apk CatatKeuangan.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CatatKeuangan-apk
+          path: CatatKeuangan.apk
+
+      - name: Catatan rilis
+        run: |
+          NOTES=app/src/main/assets/changelog.txt
+          PREV=$(git tag --list 'build-*' --sort=-v:refname | head -n 1)
+          if [ -f "$NOTES" ] && { [ -z "$PREV" ] || ! git diff --quiet "$PREV" -- "$NOTES"; }; then
+            sed -e 's/^# \(.*\)/### \1/' "$NOTES" > RELEASE_NOTES.md
+          else
+            echo "- Perbaikan kecil." > RELEASE_NOTES.md
+          fi
+          if [ -z "$CK_SIGNING_PASS" ]; then
+            printf '\n> APK ini memakai kunci debug sementara.\n' >> RELEASE_NOTES.md
+          fi
+          cat RELEASE_NOTES.md
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Catat Keuangan build ${{ github.run_number }}
+          body_path: RELEASE_NOTES.md
+          files: CatatKeuangan.apk
+          make_latest: true
