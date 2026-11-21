@@ -208,7 +208,7 @@ class TxAdapter(private val main: MainActivity, private val onClick: (Tx) -> Uni
                     else -> Ui.RED
                 }
             )
-            holder.time.text = Fmt.time(item.ts) + if (item.source == SRC_MANUAL) " · tunai" else ""
+            holder.time.text = Fmt.time(item.ts)
             holder.box.setOnClickListener { onClick(item) }
         }
     }
